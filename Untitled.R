@@ -25,9 +25,10 @@ C_price <- function(ytm,t) {
 }
 #use price to calculate DV01 Duration
 C_duration <- function(price,ytm,t){
-  M_duration <- t/(1+ytm)
-  # DV01 <- price*M_duration/10000
-  DV01 <- price*t/10000
+  #M_duration <- t/(1+ytm)
+  # M_duration <- -1/price*(-t/100)*exp(-t*ytm/100)
+  #DV01 <- price*t/10000
+  DV01 <- -(-t)*exp(-t*ytm/100)/10000
   return (DV01)
 }
 #calculate hedge ratio
@@ -36,7 +37,7 @@ C_x <- function(DV_10,DV_2) {
   return (x)
 }
 
-data <- fread('Downloads/data.csv',header=TRUE, sep=",")
+data <- fread('https://raw.githubusercontent.com/mmmdi/investment-hw-4/new_branch/data.csv',header=TRUE)
 # data.table to xts from 1983-12-30 to 2017-06-30
 tmp <- double(8437)
 for(i in data[,1]){ tmp<-as.Date(i,format='%Y-%m-%d')}
@@ -51,8 +52,8 @@ enddata<-enddata[-which(is.na(enddata))]
 enddata$p2=C_price(enddata[,1],2)
 enddata$p10=C_price(enddata[,2],10)
 #calculate the duration
-enddata$DV01_2=C_duration(enddata$p2,enddata[,2],2)
-enddata$DV01_10=C_duration(enddata$p10,enddata[,10],10)
+enddata$DV01_2=C_duration(enddata$p2,enddata[,1],2)
+enddata$DV01_10=C_duration(enddata$p10,enddata[,2],10)
 #calculate the new yield
 enddata$e_r2=NSS(1+358/365,enddata[,3],enddata[,4],enddata[,5],enddata[,6],enddata[,7],enddata[,8])
 enddata$e_r10=NSS(9+358/365,enddata[,3],enddata[,4],enddata[,5],enddata[,6],enddata[,7],enddata[,8])
@@ -87,7 +88,12 @@ plot.xts(return$cumulative_return,
 # (2) 
 t=10 #? not sure
 enddata$ct10=t^2/100*exp(-t*enddata[,2]/100)/enddata$p10
-plot.xts(enddata$ct10,col='red')
+plot.xts(enddata$ct10,ylim = range(0,0.025), col='red',major.ticks= "years", grid.ticks.on = "years")
+enddata$dp <- 1/2*enddata$ct_10*enddata$p10*(0.1/100)^2
 
 # (3)
+
+
+
+
 
