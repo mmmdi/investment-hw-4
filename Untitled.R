@@ -68,20 +68,30 @@ enddata$capital=c(rep(1000000,length(enddata$BETA0)))
 enddata$revenue=c(rep(0,length(enddata$BETA0)))
 #store the cash
 enddata$cash=c(rep(0,length(enddata$BETA0)))
-
+#store the return
+enddata$return=c(rep(0,length(enddata$BETA0)))
+#store the cumulative return
+enddata$cumu=c(rep(0,length(enddata$BETA0)))
+# store the units
+enddata$units=c(rep(0,length(enddata$BETA0)))
+enddata$dif2=lag.xts(enddata$e_p2,k=-1)-enddata$p2
+enddata$dif10=lag.xts(enddata$e_p10,k=-1)-enddata$p10
+enddata$interest=c(rep(0,length(enddata$BETA0)))
+enddata$rf=c(rep(0,length(enddata$BETA0)))
 
 for(i in 1:(length(enddata$BETA0)-1)){
-  units=enddata$capital[i]*10/(enddata$p2[i]+enddata$x[i]*enddata$p10[i])
-  enddata$revenue[i]=units*((enddata$e_p10[i]-enddata$p10[i])*enddata$xratio[i]-(enddata$e_p2[i]-enddata$p2[i]))
-  enddata$cash[i]=units*enddata$p2[i]-units*enddata$x[i]*enddata$p10[i]+enddata$capital[i]
-  riskfreerate=NSS(7/365,enddata[i,3],enddata[i,4],enddata[i,5],enddata[i,6],enddata[i,7],enddata[i,8])
-  interest=enddata$cash[i]*exp(riskfreerate/100*7/365)-enddata$cash[i]
-  enddata$capital[i+1]=enddata$capital[i]+enddata$revenue[i]+interest
+  enddata$units[i]=enddata$capital[i]*10/(enddata$p2[i]+enddata$xratio[i]*enddata$p10[i])
+  enddata$revenue[i]=enddata$units[i]*(enddata$dif10[i]*enddata$xratio[i]-enddata$dif2[i])
+  enddata$cash[i]=enddata$units[i]*enddata$p2[i]-enddata$units[i]*enddata$xratio[i]*enddata$p10[i]+enddata$capital[i]
+  enddata$rf[i]=NSS(7/365,enddata[i,3],enddata[i,4],enddata[i,5],enddata[i,6],enddata[i,7],enddata[i,8])
+  enddata$interest[i]=enddata$cash[i]*exp(enddata$rf[i]/100*7/365)-enddata$cash[i]
+  enddata$capital[i+1]=enddata$capital[i]+enddata$revenue[i]+enddata$interest[i]
+  enddata$return[i]=enddata$revenue[i]+enddata$interest[i]
 }
 # (1)
-return = enddata$capital
-return$cumulative_return = (return$capital/1000000 - 1)*100
-plot.xts(return$cumulative_return,
+# return = enddata$capital
+enddata$cumulative_return = (enddata$capital/1000000 - 1)*100
+plot.xts(enddata$cumulative_return,
          main = "Cumulative Return of Flattener",
          major.ticks= "years", grid.ticks.on = "years", col = "red")
 
@@ -89,11 +99,64 @@ plot.xts(return$cumulative_return,
 t=10 #? not sure
 enddata$ct10=t^2/100*exp(-t*enddata[,2]/100)/enddata$p10
 plot.xts(enddata$ct10,ylim = range(0,0.025), col='red',major.ticks= "years", grid.ticks.on = "years")
-enddata$dp <- 1/2*enddata$ct_10*enddata$p10*(0.1/100)^2
-
-# (3)
+enddata$dp <- 1/2*enddata$ct10*enddata$p10*(0.1/100)^2
 
 
+# (3a)
+enddata$y2_change = enddata$e_r2 - enddata[,1]
+enddata$y10_change = enddata$e_r10 - enddata[,2]
+enddata$Sreturn_2 = (- 100*enddata$y2_change*enddata$DV01_2)*enddata$units
+enddata$Sreturn_10 = (- 100*enddata$y10_change*enddata$DV01_10)*enddata$units*enddata$xratio
+cum_spread = sum(enddata$Sreturn_2)-sum(enddata$Sreturn_10)
+# plot(enddata$Sreturn_2-enddata$Sreturn_10)
+ 
+# (3b)
+enddata$ct2=2^2/100*exp(-2*enddata[,1]/100)/enddata$p2
+enddata$Creturn_2 = (1/2*enddata$p2*enddata$ct2*(enddata$y2_change/100)^2)*enddata$units
+# enddata$ct10=t^2/100*exp(-t*enddata[,2]/100)/enddata$p10
+enddata$Creturn_10 = (1/2*enddata$p10*enddata$ct10*(enddata$y10_change/100)^2)*enddata$units
+cum_con = sum(enddata$Creturn_2)+sum(enddata$Creturn_10)
+# plot(enddata$Creturn_2+enddata$Creturn_10)
+# (3c)
+enddata$timer_2 = (enddata$p2-enddata$e_p2)*enddata$units
+enddata$timer_10 = (-enddata$p10+enddata$e_p10)*enddata$units*enddata$xratio
+cum_timer = sum(enddata$timer_2)+sum(enddata$timer_10)
+# plot.xts(enddata$interest)
+cum_int = sum(enddata$interest)
 
+#(3d)
+summation = cum_spread + cum_con + cum_timer + cum_int
+totalreturn = sum(enddata$return)
+enddata$residual = enddata$return-(enddata$Sreturn_2-enddata$Sreturn_10) - (enddata$Creturn_2+enddata$Creturn_10) -enddata$interest - (enddata$timer_2 + enddata$timer_10)
+residual=sum(enddata$residual)
 
+plot.xts(enddata$cumulative_return,
+         main = "Cumulative Return of Flattener",
+         major.ticks= "years", grid.ticks.on = "years", col = "red",ylim=c(-50, 30))
+lines(enddata$Sreturn_2-enddata$Sreturn_10,major.ticks= "years", grid.ticks.on = "years", col = "blue")
+lines(enddata$Creturn_2+enddata$Creturn_10,major.ticks= "years", grid.ticks.on = "years",col='green')
 
+plot.xts(enddata$residual,major.ticks= "years", grid.ticks.on = "years",col='pink')
+lines(enddata$interest,major.ticks= "years", grid.ticks.on = "years",col='orange')
+
+#4
+enddata2=enddata
+for(i in 1:(length(enddata2$BETA0)-1)){
+  enddata2$units[i]=enddata2$capital[i]*50/(enddata2$p2[i]+enddata2$xratio[i]*enddata2$p10[i])
+  enddata2$revenue[i]=enddata2$units[i]*(enddata2$dif10[i]*enddata2$xratio[i]-enddata2$dif2[i])
+  enddata2$cash[i]=enddata2$units[i]*enddata2$p2[i]-enddata2$units[i]*enddata2$xratio[i]*enddata2$p10[i]+enddata2$capital[i]
+  enddata2$rf[i]=NSS(7/365,enddata2[i,3],enddata2[i,4],enddata2[i,5],enddata2[i,6],enddata2[i,7],enddata2[i,8])
+  enddata2$interest[i]=enddata2$cash[i]*exp(enddata2$rf[i]/100*7/365)-enddata2$cash[i]
+  enddata2$capital[i+1]=enddata2$capital[i]+enddata2$revenue[i]+enddata2$interest[i]
+  enddata2$return[i]=enddata2$revenue[i]+enddata2$interest[i]
+}
+
+enddata2$cumulative_return = (enddata2$capital/1000000 - 1)*100
+plot.xts(enddata$cumulative_return,
+         main = "Cumulative Return of Flattener",
+         major.ticks= "years", grid.ticks.on = "years", col = "red",ylim=c(-120,50))
+
+lines(enddata2$cumulative_return,
+         main = "Cumulative Return of Flattener",
+         major.ticks= "years", grid.ticks.on = "years", col = "blue")
+ 
