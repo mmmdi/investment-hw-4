@@ -37,7 +37,7 @@ C_x <- function(DV_10,DV_2) {
   return (x)
 }
 
-data <- fread('https://raw.githubusercontent.com/mmmdi/investment-hw-4/new_branch/data.csv',header=TRUE)
+data <- fread('https://raw.githubusercontent.com/mmmdi/ivst-hw-4/new_branch/data.csv',header=TRUE)
 # data.table to xts from 1983-12-30 to 2017-06-30
 tmp <- double(8437)
 for(i in data[,1]){ tmp<-as.Date(i,format='%Y-%m-%d')}
